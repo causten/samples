@@ -20,7 +20,7 @@ sd_bus *bus = NULL;
 // Good place to get the sdbus header definitions
 // http://www.freedesktop.org/software/systemd/man/index.html#S
 
-
+ 
 // This function is just to prove you can monitor specific signals
 static int greeting(sd_bus_message *m, void *user_data, sd_bus_error
                          *ret_error) {
