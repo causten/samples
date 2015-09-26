@@ -74,7 +74,7 @@ static int send_ipmi_message(unsigned char seq, unsigned char netfn, unsigned ch
 
 
 
-    // Add the bytes needed for the methos to obe called
+    // Add the bytes needed for the method to be called
     r = sd_bus_message_append(m, "yyy", seq, netfn, cmd);
     if (r < 0) {
         fprintf(stderr, "Failed add the netfn and others : %s\n", strerror(-r));
@@ -142,7 +142,7 @@ static int bus_signal_cb(sd_bus_message *m, void *user_data, sd_bus_error
     // here you could call an ipmi function
     // that's beyond the goal of this sample 
     // code.  So just create a buffer like
-    // an ipmiu function could return
+    // an ipmi function could return
     unsigned char buf[6] = {0, 2, 4, 0, 0, 0x1f};
 
 
