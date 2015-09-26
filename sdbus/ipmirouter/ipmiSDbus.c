@@ -21,6 +21,7 @@ sd_bus *bus = NULL;
 // http://www.freedesktop.org/software/systemd/man/index.html#S
 
 
+// This function is just to prove you can monitor specific signals
 static int greeting(sd_bus_message *m, void *user_data, sd_bus_error
                          *ret_error) {
 
@@ -40,7 +41,6 @@ static int greeting(sd_bus_message *m, void *user_data, sd_bus_error
     }
 
     printf("The message is %s\n", message);
-    //printf("The message is %s\n", message);
 
     return 0;
 
@@ -58,7 +58,9 @@ static int send_ipmi_message(unsigned char seq, unsigned char netfn, unsigned ch
 
 
     /* Connect to the session bus */
-    r = sd_bus_open_user(&bus);
+    // r = sd_bus_open_user(&bus);
+    r = sd_bus_open_system(&bus);
+
     if (r < 0) {
         fprintf(stderr, "Failed to connect to system bus: %s\n", strerror(-r));
         return -1;
@@ -67,8 +69,7 @@ static int send_ipmi_message(unsigned char seq, unsigned char netfn, unsigned ch
     r = sd_bus_message_new_method_call(bus,&m,INT,OBJ,INT,"sendMessage");
     if (r < 0) {
         fprintf(stderr, "Failed to add the method object: %s\n", strerror(-r));
-        return -1;
-
+        goto finish;
     }
 
 
@@ -77,13 +78,13 @@ static int send_ipmi_message(unsigned char seq, unsigned char netfn, unsigned ch
     r = sd_bus_message_append(m, "yyy", seq, netfn, cmd);
     if (r < 0) {
         fprintf(stderr, "Failed add the netfn and others : %s\n", strerror(-r));
-        return -1;
+        goto finish;
     }
 
     r = sd_bus_message_append_array(m, 'y', buf, 6);
     if (r < 0) {
         fprintf(stderr, "Failed to add the string of response bytes: %s\n", strerror(-r));
-        return -1;
+        goto finish;
     }
 
 
@@ -92,17 +93,23 @@ static int send_ipmi_message(unsigned char seq, unsigned char netfn, unsigned ch
     r = sd_bus_call(bus, m, 0, &error, &reply);
     if (r < 0) {
         fprintf(stderr, "Failed to call the method: %s", strerror(-r));
-        return -1;
+        goto finish;
     }
 
     r = sd_bus_message_read(reply, "x", &pty);
     printf("RC from the ipmi dbus method :%d \n", pty);
     if (r < 0) {
        fprintf(stderr, "Failed to get a rc from the method: %s\n", strerror(-r));
-
+       goto finish;
     }
 
-    printf("%d : %s\n", __LINE__, __PRETTY_FUNCTION__ );
+
+finish:
+    // since we used the _new_ above for the bus object
+    // we need to remove it from the bus.  Proably could
+    // just init something once and not need this free.
+    sd_bus_unref(bus);
+
     return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 
 }
@@ -132,6 +139,10 @@ static int bus_signal_cb(sd_bus_message *m, void *user_data, sd_bus_error
 
 
 
+    // here you could call an ipmi function
+    // that's beyond the goal of this sample 
+    // code.  So just create a buffer like
+    // an ipmiu function could return
     unsigned char buf[6] = {0, 2, 4, 0, 0, 0x1f};
 
 
@@ -144,8 +155,6 @@ static int bus_signal_cb(sd_bus_message *m, void *user_data, sd_bus_error
     }
 
 
-printf("%d : %s\n", __LINE__, __PRETTY_FUNCTION__ );
-
     return 0;
 }
 
@@ -157,7 +166,8 @@ int main(int argc, char *argv[]) {
 
 
     /* Connect to system bus */
-    r = sd_bus_open_user(&bus);
+    // r = sd_bus_open_user(&bus);
+    r = sd_bus_open_system(&bus);
     if (r < 0) {
         fprintf(stderr, "Failed to connect to system bus: %s\n",
                 strerror(-r));
@@ -179,9 +189,8 @@ int main(int argc, char *argv[]) {
 
 
     for (;;) {
-        /* Process requests */
 
-printf("%d : %s\n", __LINE__, __PRETTY_FUNCTION__ );        
+        /* Process requests */
         r = sd_bus_process(bus, NULL);
         if (r < 0) {
             fprintf(stderr, "Failed to process bus: %s\n", strerror(-r));
